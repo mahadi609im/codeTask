@@ -31,11 +31,6 @@ export default function Sidebar({ role, drawerId = 'dashboard-drawer' }) {
       href: '/assignments/new',
       icon: <BiPlusCircle className="size-5 shrink-0" />,
     },
-    {
-      label: 'Student Submissions',
-      href: '/submissions',
-      icon: <LuFileText className="size-5 shrink-0" />,
-    },
   ];
 
   const studentLinks = [
@@ -51,7 +46,7 @@ export default function Sidebar({ role, drawerId = 'dashboard-drawer' }) {
     },
     {
       label: 'My Submissions',
-      href: '/my-submissions',
+      href: '/assignments/my-submissions',
       icon: <BsCheckSquare className="size-5 shrink-0" />,
     },
   ];
