@@ -2,8 +2,9 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { postUser } from '@/actions/server/auth';
+import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
+import { postUser } from '@/actions/server/auth';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -11,6 +12,9 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  const [errorMessage, setErrorMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
 
   const [formData, setFormData] = useState({
     name: '',
@@ -21,37 +25,55 @@ export default function RegisterPage() {
   });
 
   const handleChange = e => {
+    setErrorMessage('');
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
   const handleSubmit = async e => {
     e.preventDefault();
+    setErrorMessage('');
+    setSuccessMessage('');
 
     if (formData.password !== formData.confirmPassword) {
-      alert('Passwords do not match');
+      setErrorMessage('Passwords do not match');
       return;
     }
 
     if (role === 'instructor' && !formData.instructorKey.trim()) {
-      alert('Please provide the Instructor Secret Key');
+      setErrorMessage('Please provide the Instructor Secret Key');
       return;
     }
 
     setLoading(true);
 
     try {
+      // ১. অ্যাকাউন্ট তৈরি
       const result = await postUser({ ...formData, role });
 
-      if (result?.success) {
-        alert('Registration successful! Please log in.');
-        router.push('/login');
+      if (!result?.success) {
+        setErrorMessage(result?.message || 'Failed to register');
+        setLoading(false);
+        return;
+      }
+
+      setSuccessMessage('Account created! Signing you in...');
+
+      // ২. স্বয়ংক্রিয় লগইন
+      const loginRes = await signIn('credentials', {
+        email: formData.email,
+        password: formData.password,
+        redirect: false,
+      });
+
+      if (loginRes?.ok) {
+        // সেশন কুকি রিফ্রেশ করে সরাসরি মূল ড্যাশবোর্ডে রিডাইরেক্ট
+        window.location.href = '/';
       } else {
-        alert(result?.message || 'Failed to register');
+        router.push('/login');
       }
     } catch (error) {
       console.error(error);
-      alert('Something went wrong. Please try again.');
-    } finally {
+      setErrorMessage('Something went wrong. Please try again.');
       setLoading(false);
     }
   };
@@ -78,7 +100,10 @@ export default function RegisterPage() {
           <div className="grid grid-cols-2 p-1 bg-base-100 rounded-xl border border-base-300">
             <button
               type="button"
-              onClick={() => setRole('student')}
+              onClick={() => {
+                setRole('student');
+                setErrorMessage('');
+              }}
               className={`py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
                 role === 'student'
                   ? 'bg-base-200 text-white shadow-sm'
@@ -89,7 +114,10 @@ export default function RegisterPage() {
             </button>
             <button
               type="button"
-              onClick={() => setRole('instructor')}
+              onClick={() => {
+                setRole('instructor');
+                setErrorMessage('');
+              }}
               className={`py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
                 role === 'instructor'
                   ? 'bg-base-200 text-white shadow-sm'
@@ -99,6 +127,19 @@ export default function RegisterPage() {
               Instructor
             </button>
           </div>
+
+          {/* Feedback Alerts */}
+          {errorMessage && (
+            <div className="p-3 text-xs text-error bg-error/10 border border-error/20 rounded-lg text-center font-medium">
+              {errorMessage}
+            </div>
+          )}
+
+          {successMessage && (
+            <div className="p-3 text-xs text-success bg-success/10 border border-success/20 rounded-lg text-center font-medium">
+              {successMessage}
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Full Name */}
@@ -249,9 +290,9 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            {/* Instructor Secret Key (Conditional) */}
+            {/* Instructor Secret Key */}
             {role === 'instructor' && (
-              <div className="space-y-1 group animate-fadeIn">
+              <div className="space-y-1 group">
                 <div className="flex items-center justify-between">
                   <label className="text-[11px] font-medium uppercase tracking-wider text-warning group-focus-within:text-warning transition-colors">
                     Instructor Secret Key
@@ -281,7 +322,7 @@ export default function RegisterPage() {
               className="w-full mt-2 py-3 rounded-xl bg-primary hover:bg-primary/90 disabled:opacity-50 text-white text-xs sm:text-sm font-semibold tracking-wide transition-all shadow-md active:scale-[0.99] cursor-pointer"
             >
               {loading
-                ? 'Creating Account...'
+                ? 'Creating & Signing In...'
                 : `Register as ${role === 'instructor' ? 'Instructor' : 'Student'}`}
             </button>
           </form>
