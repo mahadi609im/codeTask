@@ -1,6 +1,19 @@
-export default function Navbar({ user, drawerId = 'dashboard-drawer' }) {
-  const initial = user?.name ? user.name.charAt(0).toUpperCase() : 'U';
-  const isInstructor = user?.role === 'instructor';
+'use client';
+
+import { useSession, signOut } from 'next-auth/react';
+
+export default function Navbar({ drawerId = 'dashboard-drawer' }) {
+  const { data: session, status } = useSession();
+  const user = session?.user;
+
+  // সেশন লোড না হওয়া পর্যন্ত বা ইউজার না থাকলে Navbar দেখাবে না
+  if (status === 'loading' || !user) {
+    return null;
+  }
+
+  const initial = user.name.charAt(0).toUpperCase();
+  const isInstructor = user.role === 'instructor';
+  const firstName = user.name.split(' ')[0];
 
   return (
     <header className="h-16 w-full bg-base-200 border-b border-base-300 px-4 sm:px-6 flex items-center justify-between shrink-0">
@@ -28,11 +41,11 @@ export default function Navbar({ user, drawerId = 'dashboard-drawer' }) {
         </label>
 
         <span className="text-base font-medium text-neutral-content tracking-tight">
-          <span className="font-bold">Hello</span> {user?.name || 'User'}
+          <span className="font-bold text-white">Hello</span> {firstName}
         </span>
       </div>
 
-      {/* Right: Role Badge + Avatar + Down Arrow */}
+      {/* Right: Role Badge + Avatar + Dropdown */}
       <div className="dropdown dropdown-end">
         <label
           tabIndex={0}
@@ -45,12 +58,11 @@ export default function Navbar({ user, drawerId = 'dashboard-drawer' }) {
                 : 'bg-info/20 text-info border border-info/30'
             }`}
           >
-            {user?.role || 'Guest'}
+            {user.role}
           </span>
-          <div className="size-6 rounded-md bg-primary text-white text-xs font-bold flex items-center justify-center">
+          <div className="size-7 rounded-lg bg-primary text-white text-xs font-bold flex items-center justify-center shadow-sm">
             {initial}
           </div>
-          {/* Right side Down Arrow */}
           <svg
             xmlns="http://www.w3.org/2000/svg"
             viewBox="0 0 24 24"
@@ -71,17 +83,20 @@ export default function Navbar({ user, drawerId = 'dashboard-drawer' }) {
         >
           <li className="pb-2 border-b border-base-300/80">
             <p className="font-semibold text-white text-sm leading-tight">
-              {user?.name || 'User'}
+              {user.name}
             </p>
             <p className="text-neutral-content/60 text-xs truncate">
-              {user?.email || 'user@platform.com'}
+              {user.email}
             </p>
             <span className="text-[10px] text-neutral-content/50 uppercase tracking-wide mt-1">
-              Role: {user?.role || 'Guest'}
+              Role: {user.role}
             </span>
           </li>
           <li>
-            <button className="text-error hover:bg-error/10 rounded-md py-1.5 font-medium">
+            <button
+              onClick={() => signOut({ callbackUrl: '/login' })}
+              className="text-error hover:bg-error/10 rounded-md py-1.5 font-medium cursor-pointer transition-colors"
+            >
               Sign Out
             </button>
           </li>
