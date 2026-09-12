@@ -17,6 +17,8 @@ import {
   LuTimer,
   LuTrash2,
   LuX,
+  LuFileText,
+  LuLock,
 } from 'react-icons/lu';
 import {
   getStudentSubmissions,
@@ -54,26 +56,30 @@ export default function MySubmissionsPage() {
     switch (status) {
       case 'accepted':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-            <BiCheckCircle className="size-3" /> Accepted
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold tracking-wide bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            <BiCheckCircle className="size-3.5" /> Accepted
           </span>
         );
       case 'needs_improvement':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider bg-rose-500/10 text-rose-400 border border-rose-500/20">
-            <FiAlertCircle className="size-3" /> Needs Improvement
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold tracking-wide bg-rose-500/10 text-rose-400 border border-rose-500/20">
+            <FiAlertCircle className="size-3.5" /> Needs Improvement
           </span>
         );
       default:
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider bg-amber-500/10 text-amber-400 border border-amber-500/20">
-            <LuTimer className="size-3" /> Pending
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold tracking-wide bg-amber-500/10 text-amber-400 border border-amber-500/20">
+            <LuTimer className="size-3.5" /> Pending Review
           </span>
         );
     }
   };
 
   const handleOpenEdit = sub => {
+    if (sub.status === 'accepted') {
+      alert('Accepted submissions cannot be modified.');
+      return;
+    }
     setEditingSub(sub);
     setEditForm({
       repoUrl: sub.repoUrl || '',
@@ -110,14 +116,18 @@ export default function MySubmissionsPage() {
     setUpdating(false);
   };
 
-  const handleDelete = async id => {
+  const handleDelete = async sub => {
+    if (sub.status === 'accepted') {
+      alert('Accepted submissions cannot be deleted.');
+      return;
+    }
     if (
       !confirm('Are you sure you want to withdraw and delete this submission?')
     )
       return;
-    const res = await deleteSubmission(id);
+    const res = await deleteSubmission(sub._id);
     if (res?.success) {
-      setSubmissions(prev => prev.filter(item => item._id !== id));
+      setSubmissions(prev => prev.filter(item => item._id !== sub._id));
     } else {
       alert(res?.message || 'Failed to delete');
     }
@@ -125,7 +135,7 @@ export default function MySubmissionsPage() {
 
   return (
     <div className="w-full space-y-6">
-      {/* Top Header - ক্লিন ও বর্ডারবিহীন */}
+      {/* Top Header */}
       <div className="space-y-1">
         <h1 className="text-2xl font-bold tracking-tight text-white">
           My Submissions
@@ -136,13 +146,13 @@ export default function MySubmissionsPage() {
         </p>
       </div>
 
-      {/* Submissions List / Table */}
+      {/* Content Area */}
       {loading ? (
-        <div className="space-y-3">
-          {[1, 2, 3].map(n => (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {[1, 2, 3, 4].map(n => (
             <div
               key={n}
-              className="h-20 rounded-2xl bg-base-200/40 border border-base-300/60 animate-pulse"
+              className="h-56 rounded-2xl bg-base-200/40 border border-base-300/60 animate-pulse"
             />
           ))}
         </div>
@@ -160,130 +170,143 @@ export default function MySubmissionsPage() {
           </Link>
         </div>
       ) : (
-        <div className="rounded-2xl bg-base-200/50 border border-base-300 overflow-hidden backdrop-blur-sm shadow-sm">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="border-b border-base-300/60 text-[11px] font-semibold uppercase tracking-wider text-neutral-content/50 bg-base-300/20">
-                  <th className="py-3 px-5">Assignment Title</th>
-                  <th className="py-3 px-4">Repository</th>
-                  <th className="py-3 px-4">Live URL</th>
-                  <th className="py-3 px-4">Submitted On</th>
-                  <th className="py-3 px-4">Status</th>
-                  <th className="py-3 px-5">Instructor Feedback</th>
-                  <th className="py-3 pr-5 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-base-300/40">
-                {submissions.map(item => (
-                  <tr
-                    key={item._id}
-                    className="group hover:bg-base-300/10 transition-colors"
-                  >
-                    {/* Assignment Title */}
-                    <td className="py-4 px-5">
+        /* কার্ড গ্রিড লেআউট */
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {submissions.map(item => {
+            const isAccepted = item.status === 'accepted';
+
+            return (
+              <div
+                key={item._id}
+                className="flex flex-col justify-between p-5 rounded-2xl bg-base-200/50 border border-base-300 hover:border-base-300/80 transition-all shadow-sm backdrop-blur-sm space-y-4"
+              >
+                {/* কার্ড হেডার: টাইটেল ও স্ট্যাটাস */}
+                <div className="space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="space-y-1">
                       <Link
                         href={`/assignments/${item.assignmentId}`}
-                        className="font-medium text-white group-hover:text-primary transition-colors hover:underline block"
+                        className="font-semibold text-base text-white hover:text-primary transition-colors line-clamp-1"
                       >
                         {item.assignmentTitle}
                       </Link>
-                      <span className="text-[10px] uppercase text-neutral-content/40 tracking-wider">
-                        {item.assignmentDifficulty}
+                      <span className="inline-block text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded bg-base-300/40 text-neutral-content/60 border border-base-300/60">
+                        {item.assignmentDifficulty || 'Assignment'}
                       </span>
-                    </td>
+                    </div>
+                    <div>{renderStatusBadge(item.status)}</div>
+                  </div>
 
-                    {/* Repository */}
-                    <td className="py-4 px-4">
-                      <a
-                        href={item.repoUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1.5 text-primary hover:underline"
-                      >
-                        <LuGithub className="size-3.5" />
-                        <span>Code</span>
-                      </a>
-                    </td>
+                  {/* সাবমিটেড লিংক ও ডেট */}
+                  <div className="flex flex-wrap items-center gap-3 pt-1 text-xs">
+                    <a
+                      href={item.repoUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-base-300/30 border border-base-300/60 text-neutral-content/80 hover:text-white hover:border-primary/50 transition-all"
+                    >
+                      <LuGithub className="size-3.5 text-primary" />
+                      <span>Repository</span>
+                    </a>
 
-                    {/* Live URL */}
-                    <td className="py-4 px-4">
-                      <a
-                        href={item.liveUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1.5 text-primary hover:underline"
-                      >
-                        <LuExternalLink className="size-3.5" />
-                        <span>Preview</span>
-                      </a>
-                    </td>
+                    <a
+                      href={item.liveUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-base-300/30 border border-base-300/60 text-neutral-content/80 hover:text-white hover:border-primary/50 transition-all"
+                    >
+                      <LuExternalLink className="size-3.5 text-primary" />
+                      <span>Live Preview</span>
+                    </a>
 
-                    {/* Date */}
-                    <td className="py-4 px-4 text-neutral-content/60">
-                      <div className="flex items-center gap-1.5">
-                        <LuClock className="size-3.5 text-neutral-content/40" />
-                        <span>
-                          {item.submittedAt
-                            ? new Date(item.submittedAt).toLocaleDateString(
-                                'en-US',
-                                {
-                                  month: 'short',
-                                  day: 'numeric',
-                                  year: 'numeric',
-                                },
-                              )
-                            : 'N/A'}
-                        </span>
+                    <div className="flex items-center gap-1 text-[11px] text-neutral-content/50 ml-auto">
+                      <LuClock className="size-3" />
+                      <span>
+                        {item.submittedAt
+                          ? new Date(item.submittedAt).toLocaleDateString(
+                              'en-US',
+                              {
+                                month: 'short',
+                                day: 'numeric',
+                              },
+                            )
+                          : 'Recent'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* স্টুডেন্টের নোট */}
+                  {item.notes && (
+                    <div className="p-3 rounded-xl bg-base-300/20 border border-base-300/40 space-y-1">
+                      <div className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-neutral-content/40">
+                        <LuFileText className="size-3" /> Your Submission Note
                       </div>
-                    </td>
+                      <p className="text-xs text-neutral-content/70 line-clamp-2 font-mono">
+                        {item.notes}
+                      </p>
+                    </div>
+                  )}
 
-                    {/* Status Badge */}
-                    <td className="py-4 px-4">
-                      {renderStatusBadge(item.status)}
-                    </td>
+                  {/* ইনস্ট্রাক্টর ফিডব্যাক */}
+                  <div className="p-3.5 rounded-xl bg-base-300/30 border border-base-300/60 space-y-1.5">
+                    <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-primary">
+                      <LuMessageSquare className="size-3" />
+                      <span>Instructor Feedback</span>
+                    </div>
+                    {item.feedback ? (
+                      <p className="text-xs text-neutral-content/90 font-mono leading-relaxed">
+                        {item.feedback}
+                      </p>
+                    ) : (
+                      <p className="text-xs text-neutral-content/40 italic">
+                        Pending instructor evaluation. Feedback will appear here
+                        once reviewed.
+                      </p>
+                    )}
+                  </div>
+                </div>
 
-                    {/* Qualitative Feedback */}
-                    <td className="py-4 px-5 max-w-xs">
-                      {item.feedback ? (
-                        <div className="p-2.5 rounded-lg bg-base-300/40 border border-base-300/70 text-neutral-content/80 text-[11px] font-mono leading-relaxed">
-                          <div className="flex items-center gap-1 text-primary text-[10px] font-semibold mb-1">
-                            <LuMessageSquare className="size-3" /> Qualitative
-                            Note:
-                          </div>
-                          {item.feedback}
-                        </div>
-                      ) : (
-                        <span className="text-neutral-content/30 italic text-[11px]">
-                          Evaluation in progress
-                        </span>
-                      )}
-                    </td>
+                {/* কার্ড ফুটার: এডিট ও ডিলিট বাটন (Accepted হলে লক) */}
+                <div className="flex items-center justify-between pt-2 border-t border-base-300/40">
+                  {isAccepted ? (
+                    <div className="inline-flex items-center gap-1 text-[11px] text-emerald-400 font-medium">
+                      <LuLock className="size-3.5" />
+                      <span>Submission Finalized & Locked</span>
+                    </div>
+                  ) : (
+                    <span className="text-[11px] text-neutral-content/40">
+                      Editable while pending or needs improvement
+                    </span>
+                  )}
 
-                    {/* Manage Actions */}
-                    <td className="py-4 pr-5 text-right">
-                      <div className="flex items-center justify-end gap-2">
+                  <div className="flex items-center gap-2">
+                    {!isAccepted ? (
+                      <>
                         <button
                           onClick={() => handleOpenEdit(item)}
-                          className="p-1.5 rounded-lg bg-base-100 hover:bg-base-300 border border-base-300 text-neutral-content/70 hover:text-primary transition-colors cursor-pointer"
-                          title="Edit submission"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-base-100 hover:bg-base-300 border border-base-300 text-xs font-medium text-neutral-content/80 hover:text-white transition-all cursor-pointer shadow-xs active:scale-95"
                         >
                           <LuPencil className="size-3.5" />
+                          <span>Update / Resubmit</span>
                         </button>
                         <button
-                          onClick={() => handleDelete(item._id)}
-                          className="p-1.5 rounded-lg bg-base-100 hover:bg-rose-500/10 border border-base-300 text-neutral-content/70 hover:text-rose-400 transition-colors cursor-pointer"
-                          title="Delete submission"
+                          onClick={() => handleDelete(item)}
+                          className="p-1.5 rounded-xl bg-base-100 hover:bg-rose-500/10 border border-base-300 text-neutral-content/60 hover:text-rose-400 transition-all cursor-pointer shadow-xs active:scale-95"
+                          title="Withdraw submission"
                         >
-                          <LuTrash2 className="size-3.5" />
+                          <LuTrash2 className="size-4" />
                         </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                      </>
+                    ) : (
+                      <span className="px-3 py-1 rounded-xl bg-base-300/20 text-neutral-content/40 text-xs border border-base-300/40 cursor-not-allowed">
+                        Completed
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 
