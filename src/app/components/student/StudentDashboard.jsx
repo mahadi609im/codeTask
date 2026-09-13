@@ -2,34 +2,48 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import {
+  LuArrowRight,
+  LuBookOpen,
+  LuClock,
+  LuCalendar,
+  LuLayers,
+  LuExternalLink,
+} from 'react-icons/lu';
 import { getStudentDashboardAnalytics } from '@/actions/server/studentAnalytics';
+import { BiCheckCircle } from 'react-icons/bi';
+import { FiAlertCircle } from 'react-icons/fi';
 
 export default function StudentDashboard() {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState([
     {
-      label: 'Available Assignments',
+      label: 'Available Tasks',
       count: 0,
-      color: 'text-info',
-      badge: 'Curriculum',
+      icon: LuBookOpen,
+      color: 'text-sky-400',
+      bg: 'bg-sky-400/10 border-sky-400/20',
     },
     {
-      label: 'Pending Reviews',
+      label: 'Under Review',
       count: 0,
-      color: 'text-warning',
-      badge: 'In Review',
+      icon: LuClock,
+      color: 'text-amber-400',
+      bg: 'bg-amber-400/10 border-amber-400/20',
     },
     {
-      label: 'Accepted Work',
+      label: 'Accepted',
       count: 0,
-      color: 'text-success',
-      badge: 'Completed',
+      icon: BiCheckCircle,
+      color: 'text-emerald-400',
+      bg: 'bg-emerald-400/10 border-emerald-400/20',
     },
     {
-      label: 'Needs Improvement',
+      label: 'Needs Revision',
       count: 0,
-      color: 'text-error',
-      badge: 'Action Required',
+      icon: FiAlertCircle,
+      color: 'text-rose-400',
+      bg: 'bg-rose-400/10 border-rose-400/20',
     },
   ]);
   const [recentTasks, setRecentTasks] = useState([]);
@@ -39,49 +53,64 @@ export default function StudentDashboard() {
       setLoading(true);
       const res = await getStudentDashboardAnalytics();
       if (res?.success && res.data) {
-        setStats(res.data.stats);
-        setRecentTasks(res.data.recentTasks);
+        if (res.data.stats) {
+          setStats(prev =>
+            prev.map((item, idx) => ({
+              ...item,
+              count: res.data.stats[idx]?.count ?? item.count,
+            })),
+          );
+        }
+        setRecentTasks(res.data.recentTasks || []);
       }
       setLoading(false);
     }
     loadStudentAnalytics();
   }, []);
 
-  const getDifficultyBadge = level => {
-    switch ((level || '').toLowerCase()) {
-      case 'beginner':
-        return 'bg-success/15 text-success border-success/30';
-      case 'intermediate':
-        return 'bg-warning/15 text-warning border-warning/30';
-      case 'advanced':
-        return 'bg-error/15 text-error border-error/30';
-      default:
-        return 'bg-base-300 text-neutral-content';
-    }
-  };
-
-  const getStatusBadge = status => {
+  const renderStatus = status => {
     switch ((status || '').toLowerCase()) {
       case 'accepted':
-        return 'bg-success/20 text-success border border-success/30';
-      case 'pending':
-        return 'bg-warning/20 text-warning border border-warning/30';
+        return (
+          <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-emerald-400">
+            <span className="size-1.5 rounded-full bg-emerald-400"></span>
+            Accepted
+          </span>
+        );
       case 'needs improvement':
-        return 'bg-error/20 text-error border border-error/30';
+      case 'needs_improvement':
+        return (
+          <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-rose-400">
+            <span className="size-1.5 rounded-full bg-rose-400"></span>
+            Revision Required
+          </span>
+        );
+      case 'pending':
+        return (
+          <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-amber-400">
+            <span className="size-1.5 rounded-full bg-amber-400"></span>
+            In Review
+          </span>
+        );
       default:
-        return 'bg-base-300 text-neutral-content/80';
+        return (
+          <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-neutral-content/50">
+            <span className="size-1.5 rounded-full bg-neutral-content/40"></span>
+            Not Submitted
+          </span>
+        );
     }
   };
 
   if (loading) {
     return (
-      <div className="space-y-6 sm:space-y-8 w-full animate-pulse">
-        <div className="h-10 bg-base-300/40 rounded-xl w-1/3" />
+      <div className="space-y-6 w-full max-w-5xl mx-auto animate-pulse pb-10">
+        <div className="h-10 bg-base-200/50 rounded-xl w-1/3" />
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {[1, 2, 3, 4].map(n => (
             <div
               key={n}
-              className="h-28 bg-base-200 border border-base-300 rounded-xl"
+              className="h-24 bg-base-200/40 border border-base-300/60 rounded-xl"
             />
           ))}
         </div>
@@ -89,7 +118,7 @@ export default function StudentDashboard() {
           {[1, 2, 3].map(n => (
             <div
               key={n}
-              className="h-24 bg-base-200 border border-base-300 rounded-xl"
+              className="h-28 bg-base-200/40 border border-base-300/60 rounded-xl"
             />
           ))}
         </div>
@@ -98,132 +127,152 @@ export default function StudentDashboard() {
   }
 
   return (
-    <div className="space-y-6 sm:space-y-8 w-full">
+    <div className="space-y-7 w-full max-w-5xl mx-auto pb-12">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white tracking-tight">
-            My Learning Space
-          </h2>
-          <p className="text-xs sm:text-sm text-neutral-content/70 mt-1">
-            Track your tasks, submit assignments, and review instructor
-            feedback.
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-base-300/40">
+        <div className="space-y-1">
+          <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+            Learning Space
+          </h1>
+          <p className="text-xs text-neutral-content/60">
+            Monitor progress, submit active coursework, and check feedback.
           </p>
         </div>
         <Link
           href="/assignments"
-          className="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2.5 rounded-lg bg-primary hover:bg-primary/90 text-white text-xs sm:text-sm font-medium transition-colors shadow-sm"
+          className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-primary hover:bg-primary/90 text-white text-xs font-semibold tracking-wide transition-all shadow-sm active:scale-95 self-start sm:self-auto"
         >
-          Browse All Assignments
+          <span>Explore Assignments</span>
+          <LuArrowRight className="size-3.5" />
         </Link>
       </div>
 
-      {/* Metric Cards Grid */}
+      {/* Metrics Row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        {stats.map((item, idx) => (
-          <div
-            key={idx}
-            className="p-3.5 sm:p-5 rounded-xl bg-base-200 border border-base-300 flex flex-col justify-between"
-          >
-            <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-1.5">
-              <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-neutral-content/60 truncate">
-                {item.label}
-              </span>
-              <span className="self-start xl:self-auto text-[9px] sm:text-[10px] font-medium px-2 py-0.5 rounded-full bg-base-300 text-neutral-content/80 whitespace-nowrap">
-                {item.badge}
-              </span>
-            </div>
-            <p
-              className={`text-2xl sm:text-3xl font-bold mt-2 sm:mt-3 ${item.color}`}
+        {stats.map((item, idx) => {
+          const Icon = item.icon;
+          return (
+            <div
+              key={idx}
+              className="p-4 rounded-xl bg-base-200/40 border border-base-300/60 flex items-center justify-between gap-3 hover:border-base-300 transition-colors"
             >
-              {item.count}
-            </p>
-          </div>
-        ))}
+              <div className="space-y-1">
+                <span className="text-[11px] font-medium text-neutral-content/60 block">
+                  {item.label}
+                </span>
+                <p className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+                  {item.count}
+                </p>
+              </div>
+              <div className={`p-2.5 rounded-xl border ${item.bg}`}>
+                <Icon className={`size-4 sm:size-5 ${item.color}`} />
+              </div>
+            </div>
+          );
+        })}
       </div>
 
-      {/* Task & Feedback List */}
-      <div className="space-y-3 sm:space-y-4">
+      {/* Tasks & Activity Section */}
+      <div className="space-y-3.5">
         <div className="flex items-center justify-between">
-          <h3 className="text-base sm:text-lg font-semibold text-white">
+          <h2 className="text-sm font-semibold text-white tracking-wide uppercase">
             Recent Activities
-          </h3>
+          </h2>
           <Link
             href="/my-submissions"
-            className="text-xs text-primary hover:underline"
+            className="text-xs text-neutral-content/60 hover:text-primary transition-colors flex items-center gap-1"
           >
-            View full history &rarr;
+            <span>My Submissions</span>
+            <LuArrowRight className="size-3" />
           </Link>
         </div>
 
         {recentTasks.length === 0 ? (
-          <div className="p-8 text-center bg-base-200 border border-base-300 rounded-xl text-xs text-neutral-content/60">
-            No assignments available currently. Check back later!
+          <div className="py-14 text-center rounded-2xl bg-base-200/20 border border-base-300/50 space-y-2.5">
+            <LuLayers className="size-7 text-neutral-content/30 mx-auto" />
+            <p className="text-xs text-neutral-content/60">
+              No recent assignments found.
+            </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-3 sm:gap-4">
-            {recentTasks.map(task => (
-              <div
-                key={task.id}
-                className="p-4 sm:p-5 rounded-xl bg-base-200 border border-base-300 flex flex-col md:flex-row md:items-center justify-between gap-4 transition-colors"
-              >
-                <div className="space-y-2.5 max-w-2xl min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span
-                      className={`text-[10px] sm:text-[11px] font-medium px-2.5 py-0.5 rounded-md border capitalize ${getDifficultyBadge(
-                        task.difficulty,
-                      )}`}
-                    >
-                      {task.difficulty}
-                    </span>
-                    <span
-                      className={`text-[10px] sm:text-[11px] font-medium px-2.5 py-0.5 rounded-md ${getStatusBadge(
-                        task.status,
-                      )}`}
-                    >
-                      {task.status}
-                    </span>
-                    <span className="text-[11px] sm:text-xs text-neutral-content/60">
-                      Due: {task.deadline}
-                    </span>
+          <div className="space-y-3">
+            {recentTasks.map(task => {
+              const isNeedsImprovement =
+                task.status?.toLowerCase() === 'needs improvement' ||
+                task.status?.toLowerCase() === 'needs_improvement';
+              const isNotSubmitted =
+                task.status?.toLowerCase() === 'not submitted';
+
+              return (
+                <div
+                  key={task.id}
+                  className="p-4 sm:p-5 rounded-xl bg-base-200/40 border border-base-300/60 hover:border-base-300 transition-all space-y-3.5"
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    {/* Title & Metadata */}
+                    <div className="space-y-1.5 flex-1 min-w-0">
+                      <Link
+                        href={`/assignments/${task.id}`}
+                        className="text-sm sm:text-base font-semibold text-white hover:text-primary transition-colors block wrap-break-word line-clamp-1"
+                        title={task.title}
+                      >
+                        {task.title}
+                      </Link>
+
+                      <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] text-neutral-content/50">
+                        <span className="capitalize text-neutral-content/70 font-medium">
+                          {task.difficulty || 'General'}
+                        </span>
+                        <span>•</span>
+                        <div className="flex items-center gap-1">
+                          <LuCalendar className="size-3" />
+                          <span>Due {task.deadline || 'Soon'}</span>
+                        </div>
+                        <span>•</span>
+                        <div>{renderStatus(task.status)}</div>
+                      </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-base-300/40 flex items-center gap-2">
+                      {isNotSubmitted || isNeedsImprovement ? (
+                        <Link
+                          href={`/assignments/${task.id}`}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-lg bg-primary hover:bg-primary/90 text-white transition-all shadow-xs active:scale-95"
+                        >
+                          <span>
+                            {isNeedsImprovement
+                              ? 'Resubmit Solution'
+                              : 'Submit Task'}
+                          </span>
+                          <LuArrowRight className="size-3" />
+                        </Link>
+                      ) : (
+                        <Link
+                          href="/my-submissions"
+                          className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg bg-base-300/40 hover:bg-base-300 border border-base-300/60 text-neutral-content/80 hover:text-white transition-colors"
+                        >
+                          <span>Review Status</span>
+                          <LuExternalLink className="size-3 text-primary" />
+                        </Link>
+                      )}
+                    </div>
                   </div>
 
-                  <h4 className="text-sm sm:text-base font-semibold text-white leading-snug break-words">
-                    {task.title}
-                  </h4>
-
+                  {/* Feedback preview for revisions */}
                   {task.feedback && (
-                    <div className="p-3 rounded-lg bg-base-300/60 border border-error/20 text-xs text-neutral-content/90 font-mono">
-                      <span className="font-semibold text-error font-sans">
-                        Instructor Note:
-                      </span>{' '}
-                      {task.feedback}
+                    <div className="pl-3 py-1 border-l-2 border-rose-500/50 space-y-0.5 bg-base-300/10 rounded-r-lg">
+                      <span className="text-[10px] uppercase tracking-wider font-semibold text-rose-400 block">
+                        Instructor Note
+                      </span>
+                      <p className="text-xs text-neutral-content/80 leading-relaxed line-clamp-2">
+                        {task.feedback}
+                      </p>
                     </div>
                   )}
                 </div>
-
-                <div className="w-full md:w-auto shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-base-300/60">
-                  {task.status === 'Not Submitted' ||
-                  task.status === 'Needs Improvement' ? (
-                    <Link
-                      href={`/assignments/${task.id}`}
-                      className="w-full md:w-auto text-center inline-block px-4 py-2 text-xs font-medium rounded-lg bg-primary hover:bg-primary/90 text-white transition-colors"
-                    >
-                      {task.status === 'Needs Improvement'
-                        ? 'Resubmit Solution'
-                        : 'Submit Task'}
-                    </Link>
-                  ) : (
-                    <Link
-                      href="assignments/my-submissions"
-                      className="w-full md:w-auto text-center inline-block px-4 py-2 text-xs font-medium rounded-lg bg-base-300 hover:bg-base-300/80 text-white transition-colors"
-                    >
-                      View in Submissions
-                    </Link>
-                  )}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
