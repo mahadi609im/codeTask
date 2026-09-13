@@ -7,8 +7,11 @@ import {
   LuUsers,
   LuLayers,
   LuClock,
+  LuSparkles,
+  LuLoader,
 } from 'react-icons/lu';
 import { reviewSubmission } from '@/actions/server/submission';
+import { generateAIEvaluationFeedback } from '@/actions/server/ai';
 
 export default function InstructorSubmissionsView({
   submissionsList,
@@ -50,21 +53,29 @@ export default function InstructorSubmissionsView({
     setReviewFeedback(sub.feedback || '');
   };
 
-  const handleAIFeedback = () => {
+  const handleAIFeedback = async () => {
     if (!activeReviewSub) return;
     setAiGenerating(true);
-    setTimeout(() => {
-      let generated = '';
-      if (reviewStatus === 'accepted') {
-        generated = `Good grasp of requirements. ${activeReviewSub.studentName} addressed the key technical points: "${activeReviewSub.notes || 'Clean implementation'}". Deployment functions reliably and code adheres to design guidelines.`;
-      } else if (reviewStatus === 'needs_improvement') {
-        generated = `The foundation is solid, but certain edge cases require attention based on your notes. Review role redirection consistency and ensure proper error handling before re-submitting.`;
+
+    try {
+      const res = await generateAIEvaluationFeedback({
+        studentName: activeReviewSub.studentName,
+        notes: activeReviewSub.notes,
+        status: reviewStatus,
+        command: reviewFeedback, // টেক্সটবক্সে যা লেখা থাকবে সেটাকে কমান্ড/রেফারেন্স হিসেবে নেবে
+      });
+
+      if (res?.success) {
+        setReviewFeedback(res.feedback);
       } else {
-        generated = `Initial implementation is under evaluation. Overall architecture meets base expectations; verifying route validation edge cases.`;
+        alert(res?.message || 'Failed to generate AI feedback');
       }
-      setReviewFeedback(generated);
+    } catch (err) {
+      console.error(err);
+      alert('Error communicating with Groq AI');
+    } finally {
       setAiGenerating(false);
-    }, 600);
+    }
   };
 
   const handleSaveReview = async e => {
@@ -218,7 +229,7 @@ export default function InstructorSubmissionsView({
               <button
                 type="button"
                 onClick={() => setActiveReviewSub(null)}
-                className="text-neutral-content/50 hover:text-white text-sm"
+                className="text-neutral-content/50 hover:text-white text-sm cursor-pointer"
               >
                 ✕
               </button>
@@ -249,7 +260,7 @@ export default function InstructorSubmissionsView({
                       key={st.id}
                       type="button"
                       onClick={() => setReviewStatus(st.id)}
-                      className={`py-2 px-1 text-xs font-medium rounded-xl border transition-all text-center ${
+                      className={`py-2 px-1 text-xs font-medium rounded-xl border transition-all text-center cursor-pointer ${
                         reviewStatus === st.id
                           ? 'bg-base-100 border-primary text-white shadow-sm'
                           : 'bg-base-300/30 border-base-300 text-neutral-content/50 hover:text-white'
@@ -261,41 +272,53 @@ export default function InstructorSubmissionsView({
                 </div>
               </div>
 
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-semibold uppercase tracking-wider text-neutral-content/70">
-                    Qualitative Feedback
-                  </label>
-                  <button
-                    type="button"
-                    onClick={handleAIFeedback}
-                    disabled={aiGenerating}
-                    className="text-xs font-medium text-primary hover:text-primary-focus cursor-pointer disabled:opacity-50"
-                  >
-                    {aiGenerating ? 'Analyzing...' : '✦ AI Draft Feedback'}
-                  </button>
-                </div>
+              <div className="space-y-2">
+                <label className="text-xs font-semibold uppercase tracking-wider text-neutral-content/70">
+                  Qualitative Feedback
+                </label>
                 <textarea
                   rows={4}
                   required
                   value={reviewFeedback}
                   onChange={e => setReviewFeedback(e.target.value)}
-                  placeholder="Provide constructive, qualitative feedback..."
-                  className="w-full bg-base-300/30 border border-base-300 rounded-xl p-3 text-xs text-white placeholder:text-neutral-content/25 outline-none focus:border-primary/80 transition-all resize-none shadow-inner"
+                  placeholder="Provide qualitative feedback or rough points, then polish with AI..."
+                  className="w-full bg-base-300/30 border border-base-300 rounded-xl p-3 text-xs text-white placeholder:text-neutral-content/25 outline-none focus:border-primary/80 transition-all resize-none shadow-inner leading-relaxed"
                 />
+
+                {/* AI বাটনটি ইনপুটের নিচে রাখা হয়েছে */}
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={handleAIFeedback}
+                    disabled={aiGenerating}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/15 hover:bg-primary/25 border border-primary/30 text-primary hover:text-primary-focus text-xs font-medium transition-all active:scale-95 cursor-pointer disabled:opacity-50"
+                  >
+                    {aiGenerating ? (
+                      <>
+                        <LuLoader className="size-3.5 animate-spin" />
+                        <span>Drafting Feedback...</span>
+                      </>
+                    ) : (
+                      <>
+                        <LuSparkles className="size-3.5" />
+                        <span>AI Draft Feedback</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
 
-              <div className="flex items-center justify-end gap-2.5 pt-2">
+              <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-base-300/60">
                 <button
                   type="button"
                   onClick={() => setActiveReviewSub(null)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-neutral-content/60 hover:text-white transition-colors"
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-neutral-content/60 hover:text-white transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  disabled={savingReview}
+                  disabled={savingReview || aiGenerating}
                   className="px-5 py-2 rounded-xl bg-primary hover:bg-primary/90 text-white text-xs font-semibold tracking-wide transition-all shadow-md active:scale-95 cursor-pointer disabled:opacity-50"
                 >
                   {savingReview ? 'Saving...' : 'Save & Update Status'}

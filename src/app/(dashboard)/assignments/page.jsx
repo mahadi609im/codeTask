@@ -7,7 +7,6 @@ import {
   LuPlus,
   LuSearch,
   LuCalendar,
-  LuClock,
   LuTrash2,
   LuExternalLink,
   LuLayers,
@@ -15,11 +14,12 @@ import {
 import { getAssignments, deleteAssignment } from '@/actions/server/assignment';
 
 export default function AssignmentsPage() {
-  const { data: session } = useSession();
+  const { data: session, status: authStatus } = useSession();
   const isInstructor = session?.user?.role === 'instructor';
 
   const [assignments, setAssignments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDifficulty, setSelectedDifficulty] = useState('all');
 
@@ -27,7 +27,7 @@ export default function AssignmentsPage() {
     setLoading(true);
     const res = await getAssignments();
     if (res?.success) {
-      setAssignments(res.data);
+      setAssignments(res.data || []);
     }
     setLoading(false);
   };
@@ -38,12 +38,14 @@ export default function AssignmentsPage() {
 
   const handleDelete = async id => {
     if (!confirm('Are you sure you want to delete this assignment?')) return;
+    setDeletingId(id);
     const res = await deleteAssignment(id);
     if (res?.success) {
       setAssignments(prev => prev.filter(item => item._id !== id));
     } else {
-      alert(res?.message || 'Could not delete');
+      alert(res?.message || 'Could not delete assignment');
     }
+    setDeletingId(null);
   };
 
   const difficultyBadges = {
@@ -54,8 +56,8 @@ export default function AssignmentsPage() {
 
   const filteredAssignments = assignments.filter(item => {
     const matchesSearch = item.title
-      .toLowerCase()
-      .includes(searchQuery.toLowerCase());
+      ?.toLowerCase()
+      .includes(searchQuery.toLowerCase().trim());
     const matchesDifficulty =
       selectedDifficulty === 'all' || item.difficulty === selectedDifficulty;
     return matchesSearch && matchesDifficulty;
@@ -63,20 +65,24 @@ export default function AssignmentsPage() {
 
   return (
     <div className="w-full space-y-6">
-      {/* Top Header & New Button */}
+      {/* Top Header & Action Button */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-base-300/60">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white">
-            {isInstructor ? 'Manage Assignments' : 'Available Assignments'}
-          </h1>
-          <p className="text-xs text-neutral-content/60">
+          {authStatus === 'loading' ? (
+            <div className="h-7 w-48 bg-base-300/40 rounded-lg animate-pulse" />
+          ) : (
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white">
+              {isInstructor ? 'Manage Assignments' : 'Available Assignments'}
+            </h1>
+          )}
+          <p className="text-xs text-neutral-content/60 mt-0.5">
             {isInstructor
-              ? 'Create, edit parameters, and monitor student evaluation tracks.'
-              : 'Browse active coursework, study instructions, and submit deliverables.'}
+              ? 'Create tasks, define criteria, and evaluate student submissions.'
+              : 'Explore coursework, verify requirements, and submit your deliverables.'}
           </p>
         </div>
 
-        {isInstructor && (
+        {authStatus !== 'loading' && isInstructor && (
           <Link
             href="/assignments/new"
             className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-primary hover:bg-primary/90 text-white text-xs font-semibold tracking-wide transition-all shadow-md active:scale-95 cursor-pointer w-full sm:w-auto"
@@ -94,15 +100,15 @@ export default function AssignmentsPage() {
           <LuSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-neutral-content/40" />
           <input
             type="text"
-            placeholder="Search tasks..."
+            placeholder="Search by assignment title..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             className="w-full bg-base-200/50 border border-base-300/80 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder:text-neutral-content/30 outline-none focus:border-primary/80 transition-all shadow-inner"
           />
         </div>
 
-        {/* Difficulty Filter */}
-        <div className="flex items-center gap-1.5 self-start sm:self-auto p-1 rounded-xl bg-base-200/50 border border-base-300/80">
+        {/* Difficulty Filter Chips */}
+        <div className="flex items-center gap-1 self-start sm:self-auto p-1 rounded-xl bg-base-200/50 border border-base-300/80">
           {['all', 'beginner', 'intermediate', 'advanced'].map(lvl => (
             <button
               key={lvl}
@@ -119,13 +125,13 @@ export default function AssignmentsPage() {
         </div>
       </div>
 
-      {/* Grid or Empty State */}
+      {/* Assignment Grid or Empty State */}
       {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
-          {[1, 2, 3].map(n => (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-1">
+          {[1, 2, 3, 4, 5, 6].map(n => (
             <div
               key={n}
-              className="h-48 rounded-2xl bg-base-200/40 border border-base-300/60 animate-pulse"
+              className="h-52 rounded-2xl bg-base-200/40 border border-base-300/60 animate-pulse"
             />
           ))}
         </div>
@@ -138,7 +144,7 @@ export default function AssignmentsPage() {
           <p className="text-xs text-neutral-content/40">
             {isInstructor
               ? 'Get started by creating your first course assignment.'
-              : 'No available tasks match your search.'}
+              : 'No available tasks match your search filter.'}
           </p>
         </div>
       ) : (
@@ -168,7 +174,7 @@ export default function AssignmentsPage() {
                       {item.difficulty}
                     </span>
 
-                    <div className="flex items-center gap-1.5 text-[11px] text-neutral-content/50">
+                    <div className="flex items-center gap-1.5 text-[11px] text-neutral-content/50 font-mono">
                       <LuCalendar className="size-3.5" />
                       <span>{formattedDeadline}</span>
                     </div>
@@ -191,7 +197,7 @@ export default function AssignmentsPage() {
                     className="inline-flex items-center gap-1.5 text-xs text-neutral-content/70 hover:text-white transition-colors cursor-pointer"
                   >
                     <span>
-                      {isInstructor ? 'View Submissions' : 'View Task'}
+                      {isInstructor ? 'View Submissions' : 'View Task & Submit'}
                     </span>
                     <LuExternalLink className="size-3.5" />
                   </Link>
@@ -199,7 +205,8 @@ export default function AssignmentsPage() {
                   {isInstructor && (
                     <button
                       onClick={() => handleDelete(item._id)}
-                      className="p-1.5 rounded-lg text-neutral-content/40 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                      disabled={deletingId === item._id}
+                      className="p-1.5 rounded-lg text-neutral-content/40 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer disabled:opacity-40"
                       title="Delete assignment"
                     >
                       <LuTrash2 className="size-4" />

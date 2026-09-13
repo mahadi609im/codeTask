@@ -2,6 +2,7 @@
 
 import { getServerSession } from 'next-auth';
 import { ObjectId } from 'mongodb';
+import { revalidatePath } from 'next/cache';
 import { authOptions } from '@/app/lib/authOption';
 import { dbConnect, collections } from '@/app/lib/dbConnect';
 
@@ -47,6 +48,10 @@ export async function submitAssignment(payload) {
     };
 
     await submissionsCollection.updateOne(filter, updateDoc, { upsert: true });
+
+    revalidatePath('/');
+    revalidatePath('/assignments');
+    revalidatePath('/my-submissions');
 
     return { success: true, message: 'Assignment submitted successfully!' };
   } catch (error) {
@@ -95,7 +100,7 @@ export async function getSubmissionsByAssignment(assignmentId) {
   }
 }
 
-// ৩. লগড-ইন স্টুডেন্টের সব সাবমিশন নিয়ে আসা (My Submissions পেজের জন্য)
+// ৩. লগড-ইন স্টুডেন্টের সব সাবমিশন নিয়ে আসা (My Submissions পেজের জন্য)
 export async function getStudentSubmissions() {
   try {
     const session = await getServerSession(authOptions);
@@ -176,11 +181,16 @@ export async function reviewSubmission({ submissionId, status, feedback }) {
       },
     );
 
-    if (result.modifiedCount === 1) {
+    // matchedCount চেক করা হলো যেন ডকুমেন্ট অপরিবর্তিত বা সামান্য স্পেস চেঞ্জেও এরর না দেয়
+    if (result.matchedCount === 1) {
+      revalidatePath('/');
+      revalidatePath('/assignments');
+      revalidatePath('/my-submissions');
+
       return { success: true, message: 'Review published successfully' };
     }
 
-    return { success: false, message: 'Submission not found or unchanged' };
+    return { success: false, message: 'Submission not found' };
   } catch (error) {
     console.error('Review update error:', error);
     return { success: false, message: 'Failed to update review' };
@@ -219,7 +229,11 @@ export async function updateSubmission(payload) {
       },
     );
 
-    if (result.modifiedCount === 1) {
+    if (result.matchedCount === 1) {
+      revalidatePath('/');
+      revalidatePath('/assignments');
+      revalidatePath('/my-submissions');
+
       return { success: true, message: 'Submission updated successfully' };
     }
     return { success: false, message: 'Could not update submission' };
@@ -245,6 +259,10 @@ export async function deleteSubmission(submissionId) {
     });
 
     if (result.deletedCount === 1) {
+      revalidatePath('/');
+      revalidatePath('/assignments');
+      revalidatePath('/my-submissions');
+
       return { success: true, message: 'Submission removed successfully' };
     }
     return { success: false, message: 'Failed to delete submission' };

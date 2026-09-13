@@ -1,18 +1,17 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { LuArrowLeft } from 'react-icons/lu';
 import { getAssignmentById } from '@/actions/server/assignment';
 import AssignmentDetailsInfo from '@/app/components/assignments/AssignmentDetailsInfo';
 import AssignmentSubmissionsSection from '@/app/components/assignments/AssignmentSubmissionsSection';
 
-export default function AssignmentDetailsPage({ params }) {
-  const resolvedParams = use(params);
-  const { id } = resolvedParams;
-
-  const { data: session } = useSession();
+export default function AssignmentDetailsPage() {
+  const { id } = useParams();
+  const { data: session, status: authStatus } = useSession();
   const isInstructor = session?.user?.role === 'instructor';
 
   const [assignment, setAssignment] = useState(null);
@@ -20,6 +19,7 @@ export default function AssignmentDetailsPage({ params }) {
 
   useEffect(() => {
     const loadAssignment = async () => {
+      if (!id) return;
       setLoading(true);
       const res = await getAssignmentById(id);
       if (res?.success) {
@@ -28,14 +28,17 @@ export default function AssignmentDetailsPage({ params }) {
       setLoading(false);
     };
 
-    if (id) loadAssignment();
+    loadAssignment();
   }, [id]);
 
-  if (loading) {
+  if (loading || authStatus === 'loading') {
     return (
       <div className="w-full max-w-6xl mx-auto space-y-6">
-        <div className="h-6 w-36 bg-base-200/50 rounded-lg animate-pulse" />
-        <div className="h-96 rounded-2xl bg-base-200/40 border border-base-300/60 animate-pulse" />
+        <div className="h-6 w-36 bg-base-300/40 rounded-lg animate-pulse" />
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div className="lg:col-span-7 h-96 rounded-2xl bg-base-200/40 border border-base-300/60 animate-pulse" />
+          <div className="lg:col-span-5 h-96 rounded-2xl bg-base-200/40 border border-base-300/60 animate-pulse" />
+        </div>
       </div>
     );
   }
@@ -61,7 +64,7 @@ export default function AssignmentDetailsPage({ params }) {
 
   return (
     <div className="w-full max-w-6xl mx-auto space-y-7">
-      {/* ইন্সট্রাক্টর হলে ফুল-উইডথ বিবরণী এবং নিচে টেবিল */}
+      {/* ইন্সট্রাক্টর ভিউ: ফুল-উইডথ বিবরণী এবং নিচে সাবমিশন ম্যানেজমেন্ট */}
       {isInstructor ? (
         <div className="space-y-7">
           <AssignmentDetailsInfo assignment={assignment} />
@@ -71,7 +74,7 @@ export default function AssignmentDetailsPage({ params }) {
           />
         </div>
       ) : (
-        /* স্টুডেন্ট হলে গ্রিড লেআউট (বামে বিবরণী, ডানে সাবমিশন ফর্ম) */
+        /* স্টুডেন্ট ভিউ: ২-কলাম গ্রিড (বামে টাস্ক গাইডলাইন, ডানে সাবমিশন ফর্ম) */
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           <div className="lg:col-span-7">
             <AssignmentDetailsInfo assignment={assignment} />

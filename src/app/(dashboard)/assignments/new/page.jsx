@@ -3,8 +3,15 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { LuArrowLeft, LuSparkles, LuCalendar, LuInfo } from 'react-icons/lu';
+import {
+  LuArrowLeft,
+  LuSparkles,
+  LuCalendar,
+  LuInfo,
+  LuLoader,
+} from 'react-icons/lu';
 import { createAssignment } from '@/actions/server/assignment';
+import { enhanceAssignmentWithAI } from '@/actions/server/ai';
 
 export default function CreateAssignmentPage() {
   const router = useRouter();
@@ -31,19 +38,40 @@ export default function CreateAssignmentPage() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleAIEnhance = () => {
-    if (!formData.title && !formData.description) {
-      setErrorMessage('Please add a task title or a rough note first!');
+  const handleAIEnhance = async () => {
+    if (!formData.title.trim() && !formData.description.trim()) {
+      setErrorMessage(
+        'Please add a task title or draft notes before enhancing with AI.',
+      );
       return;
     }
+
+    setErrorMessage('');
     setAiGenerating(true);
-    setTimeout(() => {
-      setFormData(prev => ({
-        ...prev,
-        description: `### Assessment Objective\nBuild a scalable, role-aware full-stack module demonstrating clean data flow and defensive state validation.\n\n### Deliverables & Scope\n- Implement authenticated routing gated by verified token roles.\n- Build validated endpoints with MongoDB schema constraints.\n- Provide an accessible, responsive dashboard view.\n\n### Verification Criteria\nProvide a valid public GitHub repository and live deployment URL with verification notes.`,
-      }));
+
+    try {
+      // formData.deadline সহ সার্ভারে পাঠানো হচ্ছে
+      const res = await enhanceAssignmentWithAI({
+        title: formData.title,
+        description: formData.description,
+        difficulty: formData.difficulty,
+        deadline: formData.deadline,
+      });
+
+      if (res?.success) {
+        setFormData(prev => ({
+          ...prev,
+          description: res.enhancedDescription,
+        }));
+      } else {
+        setErrorMessage(res?.message || 'Failed to enhance assignment with AI');
+      }
+    } catch (err) {
+      console.error(err);
+      setErrorMessage('Network or server error while connecting to Groq AI');
+    } finally {
       setAiGenerating(false);
-    }, 850);
+    }
   };
 
   const handleSubmit = async e => {
@@ -60,7 +88,7 @@ export default function CreateAssignmentPage() {
         setTimeout(() => {
           router.push('/assignments');
           router.refresh();
-        }, 1100);
+        }, 1000);
       } else {
         setErrorMessage(res?.message || 'Failed to publish assignment');
       }
@@ -95,7 +123,9 @@ export default function CreateAssignmentPage() {
 
         <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-base-200/80 border border-base-300/60 text-[11px] text-neutral-content/60">
           <LuInfo className="size-3.5 text-primary shrink-0" />
-          <span>Instructors can edit details before deadlines.</span>
+          <span>
+            Pick a deadline first so AI includes it in the deliverables list.
+          </span>
         </div>
       </div>
 
@@ -112,7 +142,7 @@ export default function CreateAssignmentPage() {
         </div>
       )}
 
-      {/* Main Panel */}
+      {/* Main Form */}
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="rounded-2xl bg-base-200/50 border border-base-300 p-6 sm:p-8 space-y-7 backdrop-blur-sm">
           {/* Assignment Title */}
@@ -136,9 +166,8 @@ export default function CreateAssignmentPage() {
             />
           </div>
 
-          {/* Difficulty & Deadline Grid */}
+          {/* Difficulty & Deadline */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            {/* Difficulty Segmented Selector */}
             <div className="lg:col-span-7 space-y-2">
               <label className="text-xs font-semibold uppercase tracking-wider text-neutral-content/70">
                 Difficulty Level
@@ -166,7 +195,6 @@ export default function CreateAssignmentPage() {
               </div>
             </div>
 
-            {/* Submission Deadline */}
             <div className="lg:col-span-5 space-y-2">
               <label className="text-xs font-semibold uppercase tracking-wider text-neutral-content/70 flex items-center justify-between">
                 <span>Submission Due Date</span>
@@ -183,38 +211,60 @@ export default function CreateAssignmentPage() {
             </div>
           </div>
 
-          {/* Task Instructions */}
-          <div className="space-y-2">
+          {/* Task Instructions & AI Trigger */}
+          <div className="space-y-3">
             <div className="flex items-center justify-between">
               <label className="text-xs font-semibold uppercase tracking-wider text-neutral-content/70">
                 Task Guidelines & Evaluation Criteria
               </label>
-              <button
-                type="button"
-                onClick={handleAIEnhance}
-                disabled={aiGenerating}
-                className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary-focus bg-primary/10 border border-primary/20 hover:border-primary/40 px-2.5 py-1 rounded-md transition-all active:scale-95 cursor-pointer disabled:opacity-50"
-              >
-                <LuSparkles
-                  className={`size-3.5 ${aiGenerating ? 'animate-spin' : ''}`}
-                />
-                {aiGenerating ? 'Generating...' : 'Enhance with AI'}
-              </button>
+              <span className="text-[11px] text-neutral-content/40">
+                Type rough requirements, then auto-structure below
+              </span>
             </div>
 
             <textarea
               name="description"
               required
-              rows={9}
+              rows={11}
               value={formData.description}
               onChange={handleChange}
-              placeholder="Outline project expectations, deliverables, constraints, and submission formats..."
-              className="w-full bg-base-300/30 border border-base-300/80 rounded-xl p-4 text-sm text-white placeholder:text-neutral-content/30 outline-none focus:border-primary/80 focus:bg-base-300/60 transition-all resize-y leading-relaxed font-mono shadow-inner"
+              placeholder="Outline project expectations, deliverables, or rough thoughts..."
+              className="w-full bg-base-300/30 border border-base-300/80 rounded-xl p-4 text-xs sm:text-sm text-white placeholder:text-neutral-content/30 outline-none focus:border-primary/80 focus:bg-base-300/60 transition-all resize-y leading-relaxed font-sans shadow-inner"
             />
+
+            {/* AI Assistant Banner */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3.5 rounded-xl bg-base-300/20 border border-base-300/50">
+              <div className="flex items-center gap-2 text-xs text-neutral-content/70">
+                <LuSparkles className="size-4 text-primary shrink-0" />
+                <span>
+                  Finished drafting? AI will clean, format, and embed your
+                  deadline and links.
+                </span>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleAIEnhance}
+                disabled={aiGenerating}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary/15 hover:bg-primary/25 border border-primary/30 text-primary hover:text-primary-focus text-xs font-medium transition-all active:scale-95 cursor-pointer disabled:opacity-50 shrink-0 w-full sm:w-auto justify-center"
+              >
+                {aiGenerating ? (
+                  <>
+                    <LuLoader className="size-3.5 animate-spin" />
+                    <span>Structuring Guidelines...</span>
+                  </>
+                ) : (
+                  <>
+                    <LuSparkles className="size-3.5" />
+                    <span>Polish & Structure with AI</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Footer Actions */}
+        {/* Form Action Footer */}
         <div className="flex items-center justify-end gap-3 pt-2">
           <Link
             href="/assignments"
@@ -224,7 +274,7 @@ export default function CreateAssignmentPage() {
           </Link>
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || aiGenerating}
             className="px-6 py-2.5 rounded-xl bg-primary hover:bg-primary/90 disabled:opacity-50 text-white text-xs sm:text-sm font-semibold tracking-wide transition-all shadow-md active:scale-95 cursor-pointer"
           >
             {loading ? 'Publishing...' : 'Publish Assignment'}
