@@ -249,7 +249,7 @@ export default function StudentDashboard() {
                         </Link>
                       ) : (
                         <Link
-                          href="/my-submissions"
+                          href="/assignments/my-submissions"
                           className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg bg-base-300/40 hover:bg-base-300 border border-base-300/60 text-neutral-content/80 hover:text-white transition-colors"
                         >
                           <span>Review Status</span>
