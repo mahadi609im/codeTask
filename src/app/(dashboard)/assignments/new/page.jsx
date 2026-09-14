@@ -232,7 +232,7 @@ export default function CreateAssignmentPage() {
 
           {/* Task Instructions & AI Trigger */}
           <div className="space-y-3">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col">
               <label className="text-xs font-semibold uppercase tracking-wider text-neutral-content/70">
                 Task Guidelines & Evaluation Criteria
               </label>
