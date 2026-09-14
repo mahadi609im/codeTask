@@ -33,7 +33,7 @@ evaluation. Built with Next.js App Router, Tailwind CSS, MongoDB, and Groq AI.
   preview links, update verdict (`Accepted`, `Pending`, `Needs Improvement`),
   and provide qualitative feedback.
 - **Smart Submission Locking:** Submissions marked as `Accepted` are permanently
-  locked from modifications.
+  locked from student modifications.
 - **Learning Analytics Dashboard:** Visual insights using charts to monitor
   acceptance rates, submission distributions, and performance trends.
 
@@ -52,8 +52,8 @@ evaluation. Built with Next.js App Router, Tailwind CSS, MongoDB, and Groq AI.
 ### 3. Security & Access Control
 
 - **NextAuth RBAC:** Role-based access control protecting instructor-only routes
-  (e.g., assignment creation, submission evaluations, analytics) from student
-  accounts and vice-versa.
+  (assignment creation, student evaluations, analytics) from student accounts
+  and vice-versa.
 - **Protected Signup:** Instructor account creation requires a verified
   server-side secret key (`ph.2026`).
 
@@ -62,9 +62,7 @@ evaluation. Built with Next.js App Router, Tailwind CSS, MongoDB, and Groq AI.
 ## 🤖 AI Implementation (Groq SDK)
 
 The platform integrates ultra-fast inference via the **Groq SDK** (utilizing
-`openai/gpt-oss-20b` with a fallback to `openai/gpt-oss-120b`):
-
-### 🤖 AI-Powered Features (Groq Cloud SDK)
+`openai/gpt-oss-20b` with fallback to `openai/gpt-oss-120b`):
 
 1. **Auto-Draft Curriculum Guidelines**
    - Converts quick instructor notes, target difficulty, and deadlines into
