@@ -64,18 +64,20 @@ evaluation. Built with Next.js App Router, Tailwind CSS, MongoDB, and Groq AI.
 The platform integrates ultra-fast inference via the **Groq SDK** (utilizing
 `openai/gpt-oss-20b` with a fallback to `openai/gpt-oss-120b`):
 
-1. **Auto-Draft Curriculum Guidelines:**
-   - Converts instructor draft notes, difficulty levels, and deadlines into
-     professional, clean plain-text requirements and deliverables rubrics
-     directly in the creation form.
-   - Guardrailed to output pure plain-text without markdown table artifacts or
-     raw asterisks for optimal textarea rendering.
-2. **Context-Aware Evaluation Feedback:**
-   - In the review modal, instructors can generate qualitative, constructive
-     feedback with one click.
-   - The AI dynamically evaluates the student's submission note, the verdict
-     status (`Accepted` vs `Needs Improvement`), and custom teacher instructions
-     to write actionable, precise advice.
+### 🤖 AI-Powered Features (Groq Cloud SDK)
+
+1. **Auto-Draft Curriculum Guidelines**
+   - Converts quick instructor notes, target difficulty, and deadlines into
+     structured, clear requirements and submission guidelines in one click.
+   - Formats the content as clean, human-readable plain text without messy
+     markdown artifacts or raw asterisks for seamless rendering inside form
+     fields.
+
+2. **Smart Student Feedback Generator**
+   - Automatically drafts constructive, personalized evaluation notes for
+     student deliverables.
+   - Tailors feedback dynamically based on the review verdict (`Accepted` vs
+     `Needs Improvement`), student notes, and specific instructor directives.
 
 ---
 

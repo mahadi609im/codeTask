@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import {
   LuArrowLeft,
   LuSparkles,
@@ -15,6 +16,8 @@ import { enhanceAssignmentWithAI } from '@/actions/server/ai';
 
 export default function CreateAssignmentPage() {
   const router = useRouter();
+  const { data: session, status: authStatus } = useSession();
+
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
@@ -33,6 +36,14 @@ export default function CreateAssignmentPage() {
     { value: 'advanced', label: 'Advanced' },
   ];
 
+  // রোল প্রোটেকশন: স্টুডেন্ট ঢুকলে বা লগআউট থাকলে বের করে দেওয়া
+  useEffect(() => {
+    if (authStatus === 'loading') return;
+    if (!session?.user || session.user.role !== 'instructor') {
+      router.replace('/assignments');
+    }
+  }, [session, authStatus, router]);
+
   const handleChange = e => {
     setErrorMessage('');
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -50,7 +61,6 @@ export default function CreateAssignmentPage() {
     setAiGenerating(true);
 
     try {
-      // formData.deadline সহ সার্ভারে পাঠানো হচ্ছে
       const res = await enhanceAssignmentWithAI({
         title: formData.title,
         description: formData.description,
@@ -99,6 +109,15 @@ export default function CreateAssignmentPage() {
       setLoading(false);
     }
   };
+
+  // অথ লোডিং বা স্টুডেন্ট রিডাইরেক্ট চলাকালে ব্ল্যাঙ্ক লোডার দেখানো
+  if (authStatus === 'loading' || session?.user?.role !== 'instructor') {
+    return (
+      <div className="w-full min-h-[50vh] flex items-center justify-center">
+        <LuLoader className="size-6 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="w-full max-w-5xl mx-auto space-y-6">
