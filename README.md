@@ -1,7 +1,7 @@
-# Assignment & Learning Analytics Platform
+# Assignment & Learning Analytics Platforms
 
 A modern, role-based education management system designed for Programming Hero
-to bridge the gap between technical instruction and iterative student
+to bridge the gap between technical instruction & iterative student
 evaluation. Built with Next.js App Router, Tailwind CSS, MongoDB, and Groq AI.
 
 ---
