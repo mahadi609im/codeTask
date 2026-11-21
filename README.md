@@ -90,3 +90,4 @@ The platform integrates ultra-fast inference via the **Groq SDK** (utilizing
 - **Icons & Charts:** React Icons, Recharts / Chart.js
 
 ---
+Pair programming test note
